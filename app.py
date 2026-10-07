@@ -1,24 +1,22 @@
 import streamlit as st
 from google import genai
 
-# Page Config
 st.set_page_config(page_title="Content Creator Hub", page_icon="🚀", layout="wide")
-
 st.title("🚀 All-in-One Content Creator Hub")
 
-# Gemini Client Initialization using Streamlit Secrets
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 if not api_key:
     st.error("⚠️ Gemini API Key नहीं मिली! कृपया Streamlit Settings -> Secrets में GEMINI_API_KEY सेट करें।")
 else:
-    client = genai.Client(api_key=api_key)
+    try:
+        client = genai.Client(api_key=api_key)
+    except Exception as e:
+        st.error(f"API Client बनाने में दिक्कत आई: {e}")
 
-    # Sidebar Navigation
     st.sidebar.header("📌 Quick Navigation")
     menu = st.sidebar.radio("Go to:", ["Daily Checklist", "🤖 AI Content Ideas", "Free Design Tools"])
 
-    # 1. Daily Checklist
     if menu == "Daily Checklist":
         st.subheader("📋 Today's Creator Tasks")
         st.checkbox("Check Trending Hashtags")
@@ -29,7 +27,6 @@ else:
         if st.button("Save Daily Progress"):
             st.success("Progress Saved Successfully!")
 
-    # 2. AI Content Generator
     elif menu == "🤖 AI Content Ideas":
         st.subheader("🤖 AI Powered Content & Hashtag Generator")
         
@@ -39,17 +36,19 @@ else:
         if st.button("Generate Ideas 🚀"):
             if niche:
                 with st.spinner("AI आपके लिए विचार जनरेट कर रहा है..."):
-                    prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'. Include hooks, main content, and recommended hashtags."
-                    response = gemini-2.0-flash(
-                        model="gemini-2.5-flash",
-                        contents=prompt,
-                    )
-                    st.markdown("### 💡 AI Recommendations:")
-                    st.write(response.text)
+                    try:
+                        prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'. Include hooks, main content, and recommended hashtags."
+                        response = client.models.generate_content(
+                            model="gemini-1.5-flash",
+                            contents=prompt,
+                        )
+                        st.markdown("### 💡 AI Recommendations:")
+                        st.write(response.text)
+                    except Exception as e:
+                        st.error(f"कंटेंट जनरेट करने में समस्या आई: {e}")
             else:
                 st.warning("कृपया पहले अपना टॉपिक या नीश लिखें!")
 
-    # 3. Free Design Tools Directory
     elif menu == "Free Design Tools":
         st.subheader("🛠️ Free Tools for Content Creators")
         tools = {
