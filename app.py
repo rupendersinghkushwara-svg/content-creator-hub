@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 from google import genai
 
 st.set_page_config(page_title="Content Creator Hub", page_icon="🚀", layout="wide")
@@ -36,18 +37,32 @@ else:
         if st.button("Generate Ideas 🚀"):
             if niche:
                 with st.spinner("AI आपके लिए विचार जनरेट कर रहा है..."):
-                    try:
-                        prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'. Include hooks, main content, and recommended hashtags."
-                        
-                        # Updated active model: gemini-3.6-flash
-                        response = client.models.generate_content(
-                            model="gemini-3.6-flash",
-                            contents=prompt,
-                        )
-                        st.markdown("### 💡 AI Recommendations:")
-                        st.write(response.text)
-                    except Exception as e:
-                        st.error(f"कंटेंट जनरेट करने में समस्या आई: {e}")
+                    prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'. Include hooks, main content, and recommended hashtags."
+                    
+                    # 503 एरर से बचने के लिए बैकअप मॉडल्स की लिस्ट
+                    models_to_try = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
+                    success = False
+
+                    for model_name in models_to_try:
+                        try:
+                            response = client.models.generate_content(
+                                model=model_name,
+                                contents=prompt,
+                            )
+                            st.markdown("### 💡 AI Recommendations:")
+                            st.write(response.text)
+                            success = True
+                            break # अगर सफलता मिल जाए तो लूप बंद करें
+                        except Exception as e:
+                            if "503" in str(e):
+                                time.sleep(1) # 1 सेकंड रुककर अगला मॉडल ट्राई करें
+                                continue
+                            else:
+                                st.error(f"त्रुटि ({model_name}): {e}")
+                                break
+                    
+                    if not success:
+                        st.warning("⚠️ Google के AI सर्वर पर इस समय बहुत अधिक ट्रैफिक है। कृपया कुछ सेकंड बाद फिर से प्रयास करें!")
             else:
                 st.warning("कृपया पहले अपना टॉपिक या नीश लिखें!")
 
