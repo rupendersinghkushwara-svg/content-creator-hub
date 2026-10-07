@@ -2,7 +2,9 @@ import streamlit as st
 import time
 import requests
 import io
+import random
 from PIL import Image, ImageDraw, ImageFont
+from moviepy.editor import ImageClip, concatenate_videoclips
 from google import genai
 
 st.set_page_config(page_title="Content Creator Hub", page_icon="🚀", layout="wide")
@@ -20,13 +22,137 @@ else:
 
     st.sidebar.header("📌 Quick Navigation")
     menu = st.sidebar.radio("Go to:", [
-        "Daily Checklist", 
+        "🎬 Automated Cartoon Reel Studio",
+        "📋 Daily Checklist", 
         "🤖 AI Content Ideas", 
-        "🎬 Cartoon Reels Generator", 
         "Free Design Tools"
     ])
 
-    if menu == "Daily Checklist":
+    if menu == "🎬 Automated Cartoon Reel Studio":
+        st.subheader("🎬 Complete AI Script to Cartoon Video Automation")
+        st.write("टॉपिक दर्ज करें, कैटेगरी चुनें और 1-क्लिक में थंबनेल के साथ 18-20 सेकंड की MP4 वीडियो बनाएं!")
+
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            user_topic = st.text_input("अपना टॉपिक या आईडिया लिखें:", placeholder="उदा: चूहा सोती हुई बिल्ली को परेशान कर रहा है")
+        with col2:
+            category = st.selectbox("कंटेंट की कैटेगरी चुनें:", [
+                "👻 Horror Cartoon (डरावना)",
+                "😂 Funny Cartoon (हँसाने वाला)",
+                "💪 Motivational Cartoon (प्रेरित करने वाला)"
+            ])
+
+        # Hook titles for horror/funny/motivational clickbaits
+        if "Horror" in category:
+            hook_texts = [
+                "हिम्मत है तो अकेले देखकर दिखाओ! 😱",
+                "गलती से भी रात में मत देखना! 💀",
+                "WAIT FOR THE END! 🤯",
+                "इसे देखने के बाद नींद नहीं आएगी! 🎃"
+            ]
+        elif "Funny" in category:
+            hook_texts = [
+                "हँसी रोक कर दिखाओ! 😂",
+                "100% FUNNY! DONT LAUGH 🤣",
+                "देखो आगे क्या हुआ! 😱",
+                "LOL! 🤣🤣"
+            ]
+        else:
+            hook_texts = [
+                "यह बात जिंदगी बदल देगी! 🌟",
+                "NEVER GIVE UP! 🔥",
+                "सफलता का असली सच! 💡",
+                "MUST WATCH TILL END! 🎬"
+            ]
+
+        selected_hook = st.selectbox("थंबनेल पर दिखने वाला आकर्षित टेक्स्ट चुनें/लिखें:", hook_texts)
+
+        if st.button("Generate Script & Full MP4 Video 🚀"):
+            if user_topic:
+                random_seed = random.randint(1000, 999999) # For 100% unique script every time
+                
+                # Step 1: AI Script Generation
+                with st.spinner("1. AI नई और यूनिक 18-20 सेकंड की स्टोरी-स्क्रिप्ट लिख रहा है..."):
+                    script_prompt = f"""
+                    Write a unique, highly engaging 18-20 second short story script for category '{category}' on topic '{user_topic}'.
+                    Unique Seed ID: {random_seed}.
+                    No voiceover required. Focus on character expressions, motion scenes, sound effects (like Phoo, Laugh, Shock, Gasp), and background music vibe.
+                    Keep it short, fast-paced and catchy for 18-20 second Shorts/Reels.
+                    """
+                    try:
+                        script_resp = client.models.generate_content(
+                            model="gemini-3.6-flash",
+                            contents=script_prompt
+                        )
+                        st.success("✅ यूनिक स्टोरी-स्क्रिप्ट जनरेट हो गई!")
+                        st.text_area("📄 Generated Story Script Preview:", script_resp.text, height=150)
+                    except Exception as e:
+                        st.error(f"स्क्रिप्ट बनाने में समस्या: {e}")
+                        st.stop()
+
+                # Step 2: AI Image & Thumbnail Generation
+                with st.spinner("2. 3D एनीमेशन आर्ट और कैची थंबनेल जनरेट किया जा रहा है..."):
+                    try:
+                        style_prompt = "3d pixar style cartoon character vertical 9:16 high quality detailed"
+                        if "Horror" in category:
+                            style_prompt += " horror spooky dark glowing eyes witch ghost night background"
+                        elif "Funny" in category:
+                            style_prompt += " funny hilarious expression comedy playful bright colors"
+                        else:
+                            style_prompt += " inspirational cinematic lighting heroic proud expression"
+
+                        clean_topic = user_topic.replace(" ", "%20")
+                        img_url = f"https://image.pollinations.ai/prompt/{style_prompt}%20{clean_topic}?width=720&height=1280&nologo=true&seed={random_seed}"
+
+                        img_resp = requests.get(img_url)
+                        if img_resp.status_code == 200:
+                            base_img = Image.open(io.BytesIO(img_resp.content))
+
+                            # Create 0.1s Flash Thumbnail with Overlay Header
+                            thumb_img = base_img.copy()
+                            draw = ImageDraw.Draw(thumb_img)
+                            
+                            # Draw Horror/Clickbait Banner Box
+                            draw.rectangle([(20, 50), (700, 220)], fill=(0, 0, 0, 200))
+                            draw.text((40, 80), selected_hook, fill="yellow")
+
+                            thumb_path = "temp_thumb.png"
+                            base_path = "temp_base.png"
+                            output_video = "final_cartoon_reel.mp4"
+
+                            thumb_img.save(thumb_path)
+                            base_img.save(base_path)
+
+                            st.image(thumb_img, caption="0.1s Clickbait Thumbnail Preview (Reel Frame)", width=280)
+
+                            # Step 3: Video Assembly (MoviePy MP4 Creation)
+                            with st.spinner("3. थंबनेल + स्टोरी सीन्स को MP4 वीडियो में बदला जा रहा है..."):
+                                thumb_clip = ImageClip(thumb_path).set_duration(0.1) # 0.1s thumbnail frame
+                                main_clip = ImageClip(base_path).set_duration(19.9)   # 19.9s main scene (Total 20s)
+                                
+                                final_video = concatenate_videoclips([thumb_clip, main_clip], method="compose")
+                                final_video.write_videofile(output_video, fps=24, codec="libx264")
+
+                                with open(output_video, "rb") as file:
+                                    video_bytes = file.read()
+
+                                st.success("🎉 आपकी 20-सेकंड की कार्टून रील MP4 बनकर तैयार है!")
+                                st.video(video_bytes) # Video Player in Streamlit
+
+                                st.download_button(
+                                    label="Download MP4 Video (With 0.1s Thumbnail) 📥",
+                                    data=video_bytes,
+                                    file_name=f"{category.split()[1].lower()}_cartoon_reel.mp4",
+                                    mime="video/mp4"
+                                )
+                        else:
+                            st.error("इमेज रेंडरिंग सर्वर में रुकावट आई, कृपया दोबारा प्रयास करें।")
+                    except Exception as e:
+                        st.error(f"वीडियो कनवर्ट करने में त्रुटि: {e}")
+            else:
+                st.warning("कृपया पहले टॉपिक लिखें!")
+
+    elif menu == "Daily Checklist":
         st.subheader("📋 Today's Creator Tasks")
         st.checkbox("Check Trending Hashtags")
         st.checkbox("Brainstorm 3 Content Ideas")
@@ -38,117 +164,36 @@ else:
 
     elif menu == "🤖 AI Content Ideas":
         st.subheader("🤖 AI Powered Content & Hashtag Generator")
-        
         niche = st.text_input("अपना टॉपिक या नीश (Niche) लिखें:", placeholder="उदा: Tech, Fitness, Digital Marketing, Vlogging")
         content_type = st.selectbox("कंटेंट का प्रकार चुनें:", ["Instagram Reel / Short Script", "YouTube Video Ideas", "Viral Hashtags", "Post Captions"])
         
         if st.button("Generate Ideas 🚀"):
             if niche:
                 with st.spinner("AI आपके लिए विचार जनरेट कर रहा है..."):
-                    prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'. Include hooks, main content, and recommended hashtags."
-                    
-                    models_to_try = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
-                    success = False
-
-                    for model_name in models_to_try:
-                        try:
-                            response = client.models.generate_content(
-                                model=model_name,
-                                contents=prompt,
-                            )
-                            st.markdown("### 💡 AI Recommendations:")
-                            st.write(response.text)
-                            success = True
-                            break
-                        except Exception as e:
-                            if "503" in str(e):
-                                time.sleep(1)
-                                continue
-                            else:
-                                st.error(f"त्रुटि ({model_name}): {e}")
-                                break
-                    
-                    if not success:
-                        st.warning("⚠️ Google के AI सर्वर पर इस समय बहुत अधिक ट्रैफिक है। कृपया कुछ सेकंड बाद फिर से प्रयास करें!")
+                    prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'."
+                    try:
+                        response = client.models.generate_content(model="gemini-3.6-flash", contents=prompt)
+                        st.markdown("### 💡 AI Recommendations:")
+                        st.write(response.text)
+                    except Exception as e:
+                        st.error(f"त्रुटि: {e}")
             else:
                 st.warning("कृपया पहले अपना टॉपिक या नीश लिखें!")
 
-    elif menu == "🎬 Cartoon Reels Generator":
-        st.subheader("🎬 No-Voice Cartoon Reels & 0.1s Thumbnail Injector")
-        st.write("यहाँ बिना वॉइस के कार्टून इमोशन्स और 0.1 सेकंड के थंबनेल के साथ रील का प्रिव्यू और डाउनलोड तैयार होगा।")
-
-        cartoon_topic = st.text_input("कार्टून रील का टॉपिक लिखें:", placeholder="उदा: Cute funny boy reacting to a surprise gift")
-        thumbnail_text = st.selectbox("0.1s थंबनेल पर टेक्स्ट (Kids Hook):", [
-            "😱 WAIT FOR END!", 
-            "😂 DONT LAUGH CHALLENGE!", 
-            "OMG! WHAT HAPPENED? 🤯", 
-            "MUST WATCH! 🎬"
-        ])
-
-        if st.button("Render Reel & Generate Download 🎬"):
-            if cartoon_topic:
-                with st.spinner("1. AI कार्टून इमेज और थंबनेल बना रहा है..."):
-                    try:
-                        # 1. Generate Cartoon Thumbnail Image using Pollinations AI (Free)
-                        prompt_clean = cartoon_topic.replace(" ", "%20")
-                        img_url = f"https://image.pollinations.ai/prompt/3d%20pixar%20style%20cartoon%20character%20funny%20expression%20{prompt_clean}?width=720&height=1280&nologo=true"
-                        
-                        img_response = requests.get(img_url)
-                        if img_response.status_code == 200:
-                            image = Image.open(io.BytesIO(img_response.content))
-                            
-                            # Add Thumbnail text overlay
-                            draw = ImageDraw.Draw(image)
-                            draw.rectangle([(20, 50), (700, 150)], fill="yellow")
-                            draw.text((40, 70), thumbnail_text, fill="black")
-                            
-                            # Save to Bytes
-                            buf = io.BytesIO()
-                            image.save(buf, format="PNG")
-                            byte_im = buf.getvalue()
-
-                            st.success("🎉 कार्टून थंबनेल और रील फ्रेम तैयार हो गए हैं!")
-                            
-                            # Display Image Preview
-                            st.image(image, caption="0.1 Second Flash Thumbnail Frame Preview (9:16 Reel)", width=300)
-
-                            # 2. Provide Download Options
-                            st.markdown("### 📥 डाउनलोड करें:")
-                            st.download_button(
-                                label="Download 0.1s Cover Thumbnail Image (PNG) 🖼️",
-                                data=byte_im,
-                                file_name="reel_thumbnail.png",
-                                mime="image/png"
-                            )
-                        else:
-                            st.error("इमेज जनरेट करने में समस्या आई, कृपया दोबारा कोशिश करें।")
-                    except Exception as e:
-                        st.error(f"रेंडरिंग में त्रुटि: {e}")
-            else:
-                st.warning("कृपया पहले कार्टून रील का टॉपिक लिखें!")
-
     elif menu == "Free Design Tools":
         st.subheader("🛠️ Free Tools for Content Creators")
-        st.write("नीचे दिए गए लिंक्स पर क्लिक करके आप सीधे टूल का उपयोग कर सकते हैं:")
-
         tools_data = {
             "🎨 Graphic & Photo Design": [
                 {"name": "Canva", "url": "https://www.canva.com", "desc": "ग्राफिक डिज़ाइन, थंबनेल और पोस्ट बनाने के लिए।"},
-                {"name": "Photopea", "url": "https://www.photopea.com", "desc": "फ्री ऑनलाइन फ़ोटोशॉप (Photoshop Alternative)।"}
+                {"name": "Photopea", "url": "https://www.photopea.com", "desc": "फ्री ऑनलाइन फ़ोटोशॉप।"}
             ],
             "🤖 AI Video & Image Tools": [
                 {"name": "Upscayl", "url": "https://www.upscayl.org", "desc": "लो-क्वालिटी फोटो को AI से HD/4K में बदलें।"},
                 {"name": "Vidyo AI", "url": "https://vidyo.ai", "desc": "लॉन्ग वीडियो से शार्ट्स/रील्स बनाएं।"}
-            ],
-            "📊 Infographics & Charts": [
-                {"name": "Google Charts", "url": "https://developers.google.com/chart", "desc": "डेटा और चार्ट्स बनाने के लिए।"},
-                {"name": "Visme", "url": "https://www.visme.co", "desc": "इन्फोग्राफिक्स और प्रेजेंटेशन डिज़ाइन।"},
-                {"name": "Datamatic", "url": "https://datamatic.io", "desc": "आकर्षक विज़ुअल चार्ट्स के लिए।"}
             ]
         }
-
-        for category, list_of_tools in tools_data.items():
-            st.markdown(f"### {category}")
+        for category_name, list_of_tools in tools_data.items():
+            st.markdown(f"### {category_name}")
             for tool in list_of_tools:
                 col1, col2 = st.columns([3, 1])
                 with col1:
