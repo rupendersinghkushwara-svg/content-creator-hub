@@ -39,9 +39,9 @@ else:
                     try:
                         prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'. Include hooks, main content, and recommended hashtags."
                         
-                        # 2.0-flash model for google-genai library
+                        # Updated model name for google-genai library
                         response = client.models.generate_content(
-                            model="gemini-2.0-flash",
+                            model="gemini-2.5-flash",
                             contents=prompt,
                         )
                         st.markdown("### 💡 AI Recommendations:")
