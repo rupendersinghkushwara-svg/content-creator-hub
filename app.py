@@ -3,9 +3,15 @@ import time
 import requests
 import io
 import random
-from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, concatenate_videoclips
+import os
+from PIL import Image, ImageDraw
 from google import genai
+
+# Background video processing
+try:
+    from moviepy.editor import ImageClip, concatenate_videoclips
+except Exception as e:
+    pass
 
 st.set_page_config(page_title="Content Creator Hub", page_icon="🚀", layout="wide")
 st.title("🚀 All-in-One Content Creator Hub")
@@ -22,135 +28,121 @@ else:
 
     st.sidebar.header("📌 Quick Navigation")
     menu = st.sidebar.radio("Go to:", [
-        "🎬 Automated Cartoon Reel Studio",
+        "🎬 Fully Automated AI Video Studio",
         "📋 Daily Checklist", 
         "🤖 AI Content Ideas", 
         "Free Design Tools"
     ])
 
-    if menu == "🎬 Automated Cartoon Reel Studio":
-        st.subheader("🎬 Complete AI Script to Cartoon Video Automation")
-        st.write("टॉपिक दर्ज करें, कैटेगरी चुनें और 1-क्लिक में थंबनेल के साथ 18-20 सेकंड की MP4 वीडियो बनाएं!")
+    if menu == "🎬 Fully Automated AI Video Studio":
+        st.subheader("🎬 Instant AI Cartoon Video & Clickbait Thumbnail Generator")
+        st.write("आपको कोई टॉपिक लिखने की ज़रूरत नहीं है! बस कैटेगरी चुनें और 1-क्लिक में ऑटोमैटिक AI वीडियो बनाएं।")
 
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            user_topic = st.text_input("अपना टॉपिक या आईडिया लिखें:", placeholder="उदा: चूहा सोती हुई बिल्ली को परेशान कर रहा है")
-        with col2:
-            category = st.selectbox("कंटेंट की कैटेगरी चुनें:", [
-                "👻 Horror Cartoon (डरावना)",
-                "😂 Funny Cartoon (हँसाने वाला)",
-                "💪 Motivational Cartoon (प्रेरित करने वाला)"
-            ])
+        selected_category = st.radio(
+            "वीडियो की कैटेगरी चुनें (Choose Category):",
+            ["👻 Horror Cartoon (डरावना कार्टून)", "😂 Funny Cartoon (फनी कार्टून)", "🧘 Motivational Cartoon (शांत/मोटिवेशनल)"],
+            horizontal=True
+        )
 
-        # Hook titles for horror/funny/motivational clickbaits
-        if "Horror" in category:
-            hook_texts = [
-                "हिम्मत है तो अकेले देखकर दिखाओ! 😱",
-                "गलती से भी रात में मत देखना! 💀",
-                "WAIT FOR THE END! 🤯",
-                "इसे देखने के बाद नींद नहीं आएगी! 🎃"
+        # Pre-configured catchy clickbait titles with emojis according to category
+        if "Horror" in selected_category:
+            catchy_titles = [
+                "गलती से भी रात में मत देखना! 💀😱",
+                "हिम्मत है तो अकेले देखकर दिखाओ! 🎃👻",
+                "इसे देखने के बाद नींद नहीं आएगी! 🧟‍♂️🤯",
+                "WAIT FOR THE END! 😱🔥"
             ]
-        elif "Funny" in category:
-            hook_texts = [
-                "हँसी रोक कर दिखाओ! 😂",
-                "100% FUNNY! DONT LAUGH 🤣",
-                "देखो आगे क्या हुआ! 😱",
-                "LOL! 🤣🤣"
+            default_prompt_theme = "spooky animated witch and creepy ghost scaring in dark night background vertical 9:16 reel"
+        elif "Funny" in selected_category:
+            catchy_titles = [
+                "हँसी रोक कर दिखाओ! 😂🤣",
+                "देखते-देखते हँसते-हँसते पागल हो जाओगे! 🤣💥",
+                "इस वीडियो को देखने के बाद हँसी नहीं रुकेगी! 😂🙈",
+                "100% FUNNY! DONT LAUGH CHALLENGE 🤣😜"
             ]
+            default_prompt_theme = "funny animated playful cat chasing tiny mouse making hilarious face expressions 9:16 vertical reel"
         else:
-            hook_texts = [
-                "यह बात जिंदगी बदल देगी! 🌟",
-                "NEVER GIVE UP! 🔥",
-                "सफलता का असली सच! 💡",
-                "MUST WATCH TILL END! 🎬"
+            catchy_titles = [
+                "गुस्सा आए तो शांत रहना सीखो 🧘✨",
+                "यह बात आपकी जिंदगी बदल देगी 💡🌟",
+                "NEVER GIVE UP ON YOUR DREAMS 🔥💪",
+                "मन को शांत रखने का सबसे बड़ा रहस्य 🌸🕊️"
             ]
+            default_prompt_theme = "wise cartoon monk meditating in peaceful bamboo forest soft lighting 9:16 vertical reel"
 
-        selected_hook = st.selectbox("थंबनेल पर दिखने वाला आकर्षित टेक्स्ट चुनें/लिखें:", hook_texts)
+        selected_thumbnail_title = st.selectbox("थंबनेल के लिए आकर्षक टाइटल (Headline Text):", catchy_titles)
 
-        if st.button("Generate Script & Full MP4 Video 🚀"):
-            if user_topic:
-                random_seed = random.randint(1000, 999999) # For 100% unique script every time
-                
-                # Step 1: AI Script Generation
-                with st.spinner("1. AI नई और यूनिक 18-20 सेकंड की स्टोरी-स्क्रिप्ट लिख रहा है..."):
-                    script_prompt = f"""
-                    Write a unique, highly engaging 18-20 second short story script for category '{category}' on topic '{user_topic}'.
-                    Unique Seed ID: {random_seed}.
-                    No voiceover required. Focus on character expressions, motion scenes, sound effects (like Phoo, Laugh, Shock, Gasp), and background music vibe.
-                    Keep it short, fast-paced and catchy for 18-20 second Shorts/Reels.
-                    """
-                    try:
-                        script_resp = client.models.generate_content(
-                            model="gemini-3.6-flash",
-                            contents=script_prompt
-                        )
-                        st.success("✅ यूनिक स्टोरी-स्क्रिप्ट जनरेट हो गई!")
-                        st.text_area("📄 Generated Story Script Preview:", script_resp.text, height=150)
-                    except Exception as e:
-                        st.error(f"स्क्रिप्ट बनाने में समस्या: {e}")
-                        st.stop()
+        if st.button("Generate Fully Automated Video 🎥"):
+            random_seed = random.randint(10000, 999999)
+            
+            # Step 1: Generate AI Script Automatically
+            with st.spinner("1. AI स्वयं स्टोरी और सीन्स तय कर रहा है..."):
+                try:
+                    script_prompt = f"Write a fast-paced, action-focused story description for {selected_category}. No dialogue/voiceover needed, only character expressions and emotions for an 18-20 second Short/Reel. Seed: {random_seed}"
+                    script_response = client.models.generate_content(
+                        model="gemini-3.6-flash",
+                        contents=script_prompt
+                    )
+                    st.success("✅ AI स्टोरी स्क्रिप्ट तैयार!")
+                    st.text_area("📄 Generated Story Outline:", script_response.text, height=120)
+                except Exception as e:
+                    st.error(f"स्क्रिप्ट जनरेशन में त्रुटि: {e}")
+                    st.stop()
 
-                # Step 2: AI Image & Thumbnail Generation
-                with st.spinner("2. 3D एनीमेशन आर्ट और कैची थंबनेल जनरेट किया जा रहा है..."):
-                    try:
-                        style_prompt = "3d pixar style cartoon character vertical 9:16 high quality detailed"
-                        if "Horror" in category:
-                            style_prompt += " horror spooky dark glowing eyes witch ghost night background"
-                        elif "Funny" in category:
-                            style_prompt += " funny hilarious expression comedy playful bright colors"
-                        else:
-                            style_prompt += " inspirational cinematic lighting heroic proud expression"
+            # Step 2: Generate Thumbnail Image & Overlay Big Text
+            with st.spinner("2. 3D कार्टून थंबनेल और बड़े अक्षरों वाला पोस्टर तैयार हो रहा है..."):
+                try:
+                    prompt_encoded = default_prompt_theme.replace(" ", "%20")
+                    thumb_url = f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=720&height=1280&nologo=true&seed={random_seed}"
+                    
+                    response = requests.get(thumb_url)
+                    if response.status_code == 200:
+                        base_img = Image.open(io.BytesIO(response.content))
+                        
+                        # Add Big Bold Clickbait Text Box
+                        thumb_img = base_img.copy()
+                        draw = ImageDraw.Draw(thumb_img)
+                        draw.rectangle([(10, 40), (710, 240)], fill=(0, 0, 0, 210))
+                        draw.text((25, 80), selected_thumbnail_title, fill="yellow")
 
-                        clean_topic = user_topic.replace(" ", "%20")
-                        img_url = f"https://image.pollinations.ai/prompt/{style_prompt}%20{clean_topic}?width=720&height=1280&nologo=true&seed={random_seed}"
+                        # Save locally
+                        thumb_path = "thumbnail_frame.png"
+                        base_path = "main_frame.png"
+                        output_mp4 = "final_output_reel.mp4"
 
-                        img_resp = requests.get(img_url)
-                        if img_resp.status_code == 200:
-                            base_img = Image.open(io.BytesIO(img_resp.content))
+                        thumb_img.save(thumb_path)
+                        base_img.save(base_path)
 
-                            # Create 0.1s Flash Thumbnail with Overlay Header
-                            thumb_img = base_img.copy()
-                            draw = ImageDraw.Draw(thumb_img)
-                            
-                            # Draw Horror/Clickbait Banner Box
-                            draw.rectangle([(20, 50), (700, 220)], fill=(0, 0, 0, 200))
-                            draw.text((40, 80), selected_hook, fill="yellow")
+                        st.image(thumb_img, caption="0.1s High Impact Clickbait Thumbnail", width=280)
 
-                            thumb_path = "temp_thumb.png"
-                            base_path = "temp_base.png"
-                            output_video = "final_cartoon_reel.mp4"
-
-                            thumb_img.save(thumb_path)
-                            base_img.save(base_path)
-
-                            st.image(thumb_img, caption="0.1s Clickbait Thumbnail Preview (Reel Frame)", width=280)
-
-                            # Step 3: Video Assembly (MoviePy MP4 Creation)
-                            with st.spinner("3. थंबनेल + स्टोरी सीन्स को MP4 वीडियो में बदला जा रहा है..."):
-                                thumb_clip = ImageClip(thumb_path).set_duration(0.1) # 0.1s thumbnail frame
-                                main_clip = ImageClip(base_path).set_duration(19.9)   # 19.9s main scene (Total 20s)
+                        # Step 3: Render MP4 Video File
+                        with st.spinner("3. 0.1s थंबनेल युक्त MP4 वीडियो रेंडर की जा रही है..."):
+                            try:
+                                from moviepy.editor import ImageClip, concatenate_videoclips
+                                thumb_clip = ImageClip(thumb_path).set_duration(0.1)
+                                main_clip = ImageClip(base_path).set_duration(19.9)
                                 
                                 final_video = concatenate_videoclips([thumb_clip, main_clip], method="compose")
-                                final_video.write_videofile(output_video, fps=24, codec="libx264")
+                                final_video.write_videofile(output_mp4, fps=24, codec="libx264")
 
-                                with open(output_video, "rb") as file:
-                                    video_bytes = file.read()
+                                with open(output_mp4, "rb") as f:
+                                    video_data = f.read()
 
-                                st.success("🎉 आपकी 20-सेकंड की कार्टून रील MP4 बनकर तैयार है!")
-                                st.video(video_bytes) # Video Player in Streamlit
+                                st.success("🎉 आपकी AI वीडियो और थंबनेल सफलतापूर्वक तैयार हो चुके हैं!")
+                                st.video(video_data)
 
                                 st.download_button(
-                                    label="Download MP4 Video (With 0.1s Thumbnail) 📥",
-                                    data=video_bytes,
-                                    file_name=f"{category.split()[1].lower()}_cartoon_reel.mp4",
+                                    label="Download Complete MP4 Video 📥",
+                                    data=video_data,
+                                    file_name="ai_generated_reel.mp4",
                                     mime="video/mp4"
                                 )
-                        else:
-                            st.error("इमेज रेंडरिंग सर्वर में रुकावट आई, कृपया दोबारा प्रयास करें।")
-                    except Exception as e:
-                        st.error(f"वीडियो कनवर्ट करने में त्रुटि: {e}")
-            else:
-                st.warning("कृपया पहले टॉपिक लिखें!")
+                            except Exception as video_err:
+                                st.error(f"वीडियो कनवर्टर एरर: {video_err}")
+                    else:
+                        st.error("इमेज सर्वर रेस्पॉन्स नहीं दे रहा है।")
+                except Exception as e:
+                    st.error(f"प्रोसेसिंग में समस्या: {e}")
 
     elif menu == "Daily Checklist":
         st.subheader("📋 Today's Creator Tasks")
@@ -164,13 +156,13 @@ else:
 
     elif menu == "🤖 AI Content Ideas":
         st.subheader("🤖 AI Powered Content & Hashtag Generator")
-        niche = st.text_input("अपना टॉपिक या नीश (Niche) लिखें:", placeholder="उदा: Tech, Fitness, Digital Marketing, Vlogging")
+        niche = st.text_input("अपना टॉपिक या नीश (Niche) लिखें:", placeholder="उदा: Tech, Fitness, Vlogging")
         content_type = st.selectbox("कंटेंट का प्रकार चुनें:", ["Instagram Reel / Short Script", "YouTube Video Ideas", "Viral Hashtags", "Post Captions"])
         
         if st.button("Generate Ideas 🚀"):
             if niche:
                 with st.spinner("AI आपके लिए विचार जनरेट कर रहा है..."):
-                    prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'."
+                    prompt = f"Give me 3 creative ideas for {content_type} on topic '{niche}'."
                     try:
                         response = client.models.generate_content(model="gemini-3.6-flash", contents=prompt)
                         st.markdown("### 💡 AI Recommendations:")
