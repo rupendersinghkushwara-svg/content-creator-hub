@@ -40,7 +40,7 @@ else:
             if niche:
                 with st.spinner("AI आपके लिए विचार जनरेट कर रहा है..."):
                     prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'. Include hooks, main content, and recommended hashtags."
-                    response = client.models.generate_content(
+                    response = gemini-2.0-flash(
                         model="gemini-2.5-flash",
                         contents=prompt,
                     )
