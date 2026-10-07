@@ -12,7 +12,7 @@ else:
     try:
         client = genai.Client(api_key=api_key)
     except Exception as e:
-        st.error(f"API Client बनाने में दिक्कत आई: {e}")
+        st.error(f"API Client बनाने में समस्या: {e}")
 
     st.sidebar.header("📌 Quick Navigation")
     menu = st.sidebar.radio("Go to:", ["Daily Checklist", "🤖 AI Content Ideas", "Free Design Tools"])
@@ -38,8 +38,10 @@ else:
                 with st.spinner("AI आपके लिए विचार जनरेट कर रहा है..."):
                     try:
                         prompt = f"Give me 3 creative, high-engaging ideas for {content_type} on the topic '{niche}'. Include hooks, main content, and recommended hashtags."
+                        
+                        # 2.0-flash model for google-genai library
                         response = client.models.generate_content(
-                            model="gemini-1.5-flash",
+                            model="gemini-2.0-flash",
                             contents=prompt,
                         )
                         st.markdown("### 💡 AI Recommendations:")
